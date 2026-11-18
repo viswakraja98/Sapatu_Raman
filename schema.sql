@@ -35,6 +35,10 @@ do $$ declare t text; begin
   end loop;
 end $$;
 
+-- Let the signed-in family account use the tables through the API.
+grant usage on schema public to authenticated;
+grant select, insert, update, delete on profiles, recipes, plan_items, weights to authenticated;
+
 -- Live updates between phones.
 do $$ declare t text; begin
   foreach t in array array['profiles','recipes','plan_items','weights'] loop
