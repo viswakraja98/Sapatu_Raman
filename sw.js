@@ -1,5 +1,5 @@
 // Offline support: app files are served from cache, then refreshed in the background.
-const CACHE = 'fdp-v1';
+const CACHE = 'fdp-v2';
 const SHELL = ['./', './index.html', './styles.css', './app.js', './db.js', './charts.js', './seed.js', './groceries.js', './config.js', './manifest.json', './icons/icon-192.png'];
 self.addEventListener('install', e => { e.waitUntil(caches.open(CACHE).then(c => c.addAll(SHELL))); self.skipWaiting(); });
 self.addEventListener('activate', e => {

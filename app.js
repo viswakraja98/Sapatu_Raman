@@ -131,7 +131,8 @@ async function reload() {
     state.syncing = true;
     const d = await backend.loadAll();
     TABLES.forEach(t => (state.data[t] = d[t] || []));
-  } catch (e) { toast('Could not load data: ' + (e.message || e)); }
+    state.loadError = null;
+  } catch (e) { state.loadError = e.message || String(e); toast('Could not load data: ' + state.loadError); }
   state.syncing = false;
   render();
 }
@@ -167,7 +168,18 @@ function field(label, input, hint) { return h('label', { class: 'field' }, h('sp
 function render() {
   const app = $('#app');
   const [page, arg] = route();
-  if (!state.data.profiles.length) { app.replaceChildren(h('div', { class: 'empty' }, state.syncing ? 'Loading…' : 'Setting up…')); return; }
+  if (!state.data.profiles.length) {
+    if (state.loadError && !state.syncing) {
+      app.replaceChildren(h('div', { class: 'page center' }, h('section', { class: 'card login' },
+        h('h1', {}, 'Database not ready'),
+        h('p', {}, 'The app signed in but couldn’t read or create its data. Usually this means schema.sql hasn’t been run in the Supabase SQL Editor yet.'),
+        h('p', { class: 'error small' }, state.loadError),
+        h('div', { class: 'btn-row' }, h('button', { class: 'btn primary', onclick: () => location.reload() }, 'Try again'),
+          backend.kind === 'supabase' && h('button', { class: 'btn', onclick: async () => { await backend.signOut(); location.reload(); } }, 'Sign out')))));
+      return;
+    }
+    app.replaceChildren(h('div', { class: 'empty' }, state.syncing ? 'Loading…' : 'Setting up…')); return;
+  }
   if (!state.me || !profileById(state.me)) { app.replaceChildren(whoAreYou()); return; }
   if (!state.viewing || !profileById(state.viewing)) state.viewing = state.me;
 
@@ -806,7 +818,10 @@ async function start() {
   if (!session) { loginView(); return; }
   state.syncing = true; render();
   await reload();
-  if (!state.data.profiles.length || !state.data.recipes.length) { await seedIfEmpty(); await reload(); }
+  if (!state.loadError && (!state.data.profiles.length || !state.data.recipes.length)) {
+    try { await seedIfEmpty(); } catch (e) { state.loadError = e.message || String(e); }
+    if (!state.loadError) await reload(); else render();
+  }
   backend.subscribe(reload);
   document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') reload(); });
 }
